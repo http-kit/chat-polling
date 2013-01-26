@@ -1,0 +1,8 @@
+#!/bin/bash
+rm -rf classes
+mkdir classes
+
+java -cp "$(lein classpath)" \
+    clojure.main -m main
+
+    # -Xdebug -Xrunjdwp:transport=dt_socket,address=9092,server=y,suspend=n \
