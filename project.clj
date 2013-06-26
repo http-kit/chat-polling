@@ -6,7 +6,7 @@
                  [org.clojure/data.json "0.2.1"]
                  [org.clojure/tools.logging "0.2.6"]
                  [ch.qos.logback/logback-classic "1.0.13"]
-                 [http-kit "2.0-RC1" #_"2.1.1"]]
+                 [http-kit "2.1.1"]]
   :warn-on-reflection true
   :min-lein-version "2.0.0"
   :main main

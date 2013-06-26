@@ -11,7 +11,9 @@
 
 (defn- now [] (quot (System/currentTimeMillis) 1000))
 
-(def clients (atom {}))                 ; a hub, a map of client => sequence number
+(def clients
+  "map channel -> sequence number"
+  (atom {}))                 ; a hub, a map of client => sequence number
 
 (let [max-id (atom 0)]
   (defn next-id []
@@ -30,8 +32,11 @@
         msgs (get-msgs id)]
     (if (seq msgs)
       {:status 200 :headers json-header :body (json-str msgs)}
-      (async-response respond           ; save it, trigger by events
-                      (swap! clients assoc respond id)))))
+      (with-channel  req channel
+        ;; store the channel so other threads can write into it
+        ;; notice that we don't need to return anything, the body is just
+        ;; executed but a default, async response with the channel is returned
+        (swap! clients assoc channel id)))))
 
 (defn on-mesg-received [req]
   (let [{:keys [msg author]} (-> req :params)
@@ -43,13 +48,13 @@
        (if (> total 100)
          (ref-set all-msgs (vec (drop (- total 100) all-msgs*)))
          (ref-set all-msgs all-msgs*))))
-    (doseq [respond (keys @clients)]
+    (doseq [channel (keys @clients)]
       ;; send message to client
-      (respond {:status 200
+      (send! channel {:status 200
                 :headers json-header
-                :body (json-str (get-msgs (@clients respond)))})
+                :body (json-str (get-msgs (@clients channel)))})
       ;; remove it, client will try to poll again
-      (swap! clients dissoc respond))
+      (swap! clients dissoc channel))
     {:status 200 :headers {}}))
 
 (defroutes chartrootm
