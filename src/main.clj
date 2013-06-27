@@ -17,6 +17,7 @@
 
 (let [max-id (atom 0)]
   (defn next-id []
+    "ID generator"
     (swap! max-id inc)))
 
 (defonce all-msgs (ref [{:id (next-id),            ; all message, in a list
@@ -25,6 +26,7 @@
                          :author "system"}]))
 
 (defn- get-msgs [max-id]
+  ;; only the messages client does not have yet: id greater than max-id
   (filter #(> (-> %1 :id) max-id) @all-msgs))
 
 (defn poll-mesg [req]
@@ -42,17 +44,13 @@
   (let [{:keys [msg author]} (-> req :params)
         data {:msg msg :author author :time (now) :id (next-id)}]
     (info "mesg received: " msg)
-    (dosync
-     (let [all-msgs* (conj @all-msgs data)
-           total (count all-msgs*)]
-       (if (> total 100)
-         (ref-set all-msgs (vec (drop (- total 100) all-msgs*)))
-         (ref-set all-msgs all-msgs*))))
+    ;; add message to the message store
+    (dosync (alter all-msgs conj data))
     (doseq [channel (keys @clients)]
       ;; send message to client
       (send! channel {:status 200
-                :headers json-header
-                :body (json-str (get-msgs (@clients channel)))})
+                      :headers json-header
+                      :body (json-str (get-msgs (@clients channel)))})
       ;; remove it, client will try to poll again
       (swap! clients dissoc channel))
     {:status 200 :headers {}}))
@@ -73,4 +71,4 @@
 
 (defn -main [& args]
   (run-server (-> #'chartrootm site wrap-request-logging) {:port 9898})
-  (info "server started. http://127.0.0.1:9898"))
+  (info "server started. http://127.0.0.1:9898. Try open 2 browser tabs, have a nice chat"))
