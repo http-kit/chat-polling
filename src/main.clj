@@ -38,7 +38,9 @@
         ;; store the channel so other threads can write into it
         ;; notice that we don't need to return anything, the body is just
         ;; executed but a default, async response with the channel is returned
-        (swap! clients assoc channel id)))))
+        (swap! clients assoc channel id)
+        (on-close channel (fn [status]
+                            (swap! clients dissoc channel)))))))
 
 (defn on-mesg-received [req]
   (let [{:keys [msg author]} (-> req :params)
@@ -50,9 +52,7 @@
       ;; send message to client
       (send! channel {:status 200
                       :headers json-header
-                      :body (json-str (get-msgs (@clients channel)))})
-      ;; remove it, client will try to poll again
-      (swap! clients dissoc channel))
+                      :body (json-str (get-msgs (@clients channel)))}))
     {:status 200 :headers {}}))
 
 (defroutes chartrootm
